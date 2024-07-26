@@ -1,11 +1,12 @@
 {
 	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es2018",
+		"module": "ESNext",
+		"target": "ES2020",
+    "moduleResolution": "Bundler",
 		"esModuleInterop": true,
-		"newLine": "LF",
-		"importHelpers": true,
-		"useUnknownInCatchVariables": true
+    "skipLibCheck": true,
+    "noEmit": true
 	},
-	"exclude": ["node_modules/"]
+  "include": ["src", "tsup.config.ts"],
+	"exclude": ["node_modules", "dist"]
 }
