@@ -1,6 +1,6 @@
-import { Readable, Stream } from "stream";
 import * as Messages from "./messages";
 import * as zip from "do-not-zip";
+// import { Buffer as FakeBuffer } from "buffer/";
 
 export const filesSymbol = Symbol("bundleFiles");
 export const freezeSymbol = Symbol("bundleFreeze");
@@ -18,7 +18,7 @@ namespace Mime {
  */
 
 export default class Bundle {
-	private [filesSymbol]: { [key: string]: Buffer } = {};
+	private [filesSymbol]: { [key: string]: Uint8Array } = {};
 	private [mimeTypeSymbol]: string;
 
 	public constructor(mimeType: `${Mime.type}/${Mime.subtype}`) {
@@ -110,7 +110,7 @@ export default class Bundle {
 	 * @param buffer
 	 */
 
-	public addBuffer(fileName: string, buffer: Buffer) {
+	public addBuffer(fileName: string, buffer: Uint8Array) {
 		if (this.isFrozen) {
 			throw new Error(Messages.BUNDLE.CLOSED);
 		}
@@ -126,24 +126,9 @@ export default class Bundle {
 	 * @returns Buffer
 	 */
 
-	public getAsBuffer(): Buffer {
+	public getAsBuffer(): Uint8Array {
 		this[freezeSymbol]();
-		return zip.toBuffer(createZipFilesMap(this[filesSymbol]));
-	}
-
-	/**
-	 * Closes the bundle and returns it as a stream.
-	 * Once closed, the bundle does not allow files
-	 * to be added any further.
-	 *
-	 * @returns
-	 */
-
-	public getAsStream(): Stream {
-		this[freezeSymbol]();
-		return Readable.from(
-			zip.toBuffer(createZipFilesMap(this[filesSymbol])),
-		);
+		return new Uint8Array(zip.toArray(createZipFilesMap(this[filesSymbol])));
 	}
 
 	/**
@@ -156,7 +141,7 @@ export default class Bundle {
 	 * 		and Buffers as content.
 	 */
 
-	public getAsRaw(): { [filePath: string]: Buffer } {
+	public getAsRaw(): { [filePath: string]: Uint8Array } {
 		this[freezeSymbol]();
 		return Object.freeze({ ...this[filesSymbol] });
 	}
@@ -169,7 +154,7 @@ export default class Bundle {
  * @returns
  */
 
-function createZipFilesMap(files: { [key: string]: Buffer }) {
+function createZipFilesMap(files: { [key: string]: Uint8Array }) {
 	return Object.entries(files).map(([path, data]) => ({
 		path,
 		data,

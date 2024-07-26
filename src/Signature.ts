@@ -1,6 +1,5 @@
 import forge from "node-forge";
 import type * as Schemas from "./schemas";
-import { Buffer } from "buffer";
 
 /**
  * Creates an hash for a buffer. Used by manifest
@@ -9,32 +8,33 @@ import { Buffer } from "buffer";
  * @returns
  */
 
-export function createHash(buffer: Buffer) {
+export function createHash(buffer: Uint8Array) {
 	const hashFlow = forge.md.sha1.create();
-	hashFlow.update(buffer.toString("binary"));
+  const binary = buffer.reduce((string, byte) => (string + String.fromCharCode(byte)), "")
+	hashFlow.update(binary);
 
 	return hashFlow.digest().toHex();
 }
 
 /**
- * Generates the PKCS #7 cryptografic signature for the manifest file.
+ * Generates the PKCS #7 cryptographic signature for the manifest file.
  *
  * @method create
- * @params manifest
+ * @params manifestBuffer     
  * @params certificates
  * @returns
  */
 
 export function create(
-	manifestBuffer: Buffer,
+	manifestBuffer: Uint8Array,
 	certificates: Schemas.CertificatesSchema,
-): Buffer {
+): Uint8Array {
 	const signature = forge.pkcs7.createSignedData();
 
 	signature.content = new forge.util.ByteStringBuffer(manifestBuffer);
 
 	const { wwdr, signerCert, signerKey } = parseCertificates(
-		getStringCertificates(certificates),
+    getStringCertificates(certificates),
 	);
 
 	signature.addCertificate(wwdr);
@@ -88,10 +88,7 @@ export function create(
 	 * of beautiful things. ¯\_(ツ)_/¯
 	 */
 
-	return Buffer.from(
-		forge.asn1.toDer(signature.toAsn1()).getBytes(),
-		"binary",
-	);
+  return forge.util.binary.raw.decode(forge.asn1.toDer(signature.toAsn1()).getBytes());
 }
 
 /**
@@ -106,10 +103,10 @@ function parseCertificates(certificates: Schemas.CertificatesSchema) {
 	const { signerCert, signerKey, wwdr, signerKeyPassphrase } = certificates;
 
 	return {
-		signerCert: forge.pki.certificateFromPem(signerCert.toString("utf-8")),
-		wwdr: forge.pki.certificateFromPem(wwdr.toString("utf-8")),
+		signerCert: forge.pki.certificateFromPem(signerCert as string),
+		wwdr: forge.pki.certificateFromPem(wwdr as string),
 		signerKey: forge.pki.decryptRsaPrivateKey(
-			signerKey.toString("utf-8"),
+			signerKey as string,
 			signerKeyPassphrase,
 		),
 	};
@@ -123,8 +120,8 @@ function getStringCertificates(
 > & { signerKeyPassphrase?: string } {
 	return {
 		signerKeyPassphrase: certificates.signerKeyPassphrase,
-		wwdr: Buffer.from(certificates.wwdr).toString("utf-8"),
-		signerCert: Buffer.from(certificates.signerCert).toString("utf-8"),
-		signerKey: Buffer.from(certificates.signerKey).toString("utf-8"),
+		wwdr: typeof certificates.wwdr === "string" ? certificates.wwdr : new TextDecoder().decode(certificates.wwdr),
+		signerCert: typeof certificates.signerCert === "string" ? certificates.signerCert : new TextDecoder().decode(certificates.signerCert),
+		signerKey: typeof certificates.signerKey === "string" ? certificates.signerKey : new TextDecoder    ().decode(certificates.signerKey),
 	};
 }

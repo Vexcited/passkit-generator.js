@@ -1,6 +1,3 @@
-import { EOL } from "os";
-import { Buffer } from "buffer";
-
 // ************************************ //
 // *** UTILS FOR PASS.STRINGS FILES *** //
 // ************************************ //
@@ -12,9 +9,8 @@ import { Buffer } from "buffer";
  * @param buffer
  * @returns
  */
-
-export function parse(buffer: Buffer) {
-	const fileAsString = buffer.toString("utf8");
+export function parse(buffer: Uint8Array) {
+  const fileAsString = new TextDecoder().decode(buffer);
 	const translationRowRegex = /"(?<key>.+)"\s+=\s+"(?<value>.+)";\n?/;
 	const commentRowRegex = /\/\*\s*(.+)\s*\*\//;
 
@@ -65,13 +61,12 @@ export function parse(buffer: Buffer) {
 }
 
 /**
- * Creates a strings file buffer
+ * Creates a strings file buffer.
  *
  * @param translations
  * @returns
  */
-
-export function create(translations: { [key: string]: string }): Buffer {
+export function create(translations: Record<string, string>): Uint8Array {
 	const stringContents = [];
 
 	const translationsEntries = Object.entries(translations);
@@ -82,5 +77,5 @@ export function create(translations: { [key: string]: string }): Buffer {
 		stringContents.push(`"${key}" = "${value}";`);
 	}
 
-	return Buffer.from(stringContents.join(EOL));
+  return new TextEncoder().encode(stringContents.join("\n"));
 }

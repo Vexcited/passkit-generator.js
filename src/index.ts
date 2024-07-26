@@ -1,9 +1,5 @@
 export { default as PKPass } from "./PKPass";
 
-// ***************************************** //
-// *** Exporting only schemas interfaces *** //
-// ***************************************** //
-
 export type {
 	Barcode,
 	Beacon,

@@ -9,7 +9,6 @@ export * from "./Personalize";
 export * from "./Certificates";
 
 import Joi from "joi";
-import { Buffer } from "buffer";
 
 import { Barcode } from "./Barcode";
 import { Location } from "./Location";
@@ -25,7 +24,7 @@ const RGB_COLOR_REGEX =
 	/rgb\(\s*(?:[01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\s*,\s*(?:[01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\s*,\s*(?:[01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])\s*\)/;
 
 export interface FileBuffers {
-	[key: string]: Buffer;
+	[key: string]: Uint8Array;
 }
 
 export interface PassProps {
@@ -148,10 +147,13 @@ export const OverridablePassProps = Joi.object<OverridablePassProps>({
 }).with("webServiceURL", "authenticationToken");
 
 export const PassProps = Joi.object<
-	OverridablePassProps & PassKindsProps & PassPropsFromMethods
+  OverridablePassProps & PassKindsProps & PassPropsFromMethods
 >()
-	.concat(OverridablePassProps)
-	.concat(PassKindsProps)
+  // @ts-ignore : can't extend the object directly.
+  .concat(OverridablePassProps)
+  // @ts-ignore : can't extend the object directly.
+  .concat(PassKindsProps)
+  // @ts-ignore : can't extend the object directly.
 	.concat(PassPropsFromMethods);
 
 export interface Template {

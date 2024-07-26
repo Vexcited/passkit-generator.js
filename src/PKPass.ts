@@ -1,9 +1,6 @@
-import { Stream } from "stream";
-import { Buffer } from "buffer";
-import path from "path";
+// import { Buffer as FakeBuffer } from "buffer/";
 import FieldsArray from "./FieldsArray";
 import Bundle, { filesSymbol } from "./Bundle";
-import getModelFolderContents from "./getModelFolderContents";
 import * as Schemas from "./schemas";
 import * as Signature from "./Signature";
 import * as Strings from "./StringsUtils";
@@ -38,65 +35,6 @@ export default class PKPass extends Bundle {
 		};
 	} = {};
 	private [passTypeSymbol]: Schemas.PassTypesProps | undefined = undefined;
-
-	/**
-	 * Either create a pass from another one
-	 * or a disk path.
-	 *
-	 * @param source
-	 * @returns
-	 */
-
-	public static async from<S extends PKPass | Schemas.Template>(
-		source: S,
-		props?: Schemas.OverridablePassProps,
-	): Promise<PKPass> {
-		let certificates: Schemas.CertificatesSchema | undefined = undefined;
-		let buffers: Schemas.FileBuffers | undefined = undefined;
-
-		if (!source) {
-			throw new TypeError(
-				Messages.format(Messages.FROM.MISSING_SOURCE, source),
-			);
-		}
-
-		if (source instanceof PKPass) {
-			/** Cloning is happening here */
-			certificates = source[certificatesSymbol];
-			buffers = {};
-
-			const buffersEntries = Object.entries(source[filesSymbol]);
-
-			/** Cloning all the buffers to prevent unwanted edits */
-			for (let i = 0; i < buffersEntries.length; i++) {
-				const [fileName, contentBuffer] = buffersEntries[i];
-
-				buffers[fileName] = Buffer.alloc(contentBuffer.length);
-				contentBuffer.copy(buffers[fileName]);
-			}
-
-			/**
-			 * Moving props to pass.json instead of overrides
-			 * because many might get excluded when passing
-			 * through validation
-			 */
-
-			buffers["pass.json"] = Buffer.from(
-				JSON.stringify(source[propsSymbol]),
-			);
-		} else {
-			Schemas.assertValidity(
-				Schemas.Template,
-				source,
-				Messages.TEMPLATE.INVALID,
-			);
-
-			buffers = await getModelFolderContents(source.model);
-			certificates = source.certificates;
-		}
-
-		return new PKPass(buffers, certificates, props);
-	}
 
 	/**
 	 * Creates a Bundle made of PKPass to be distributed
@@ -146,7 +84,7 @@ export default class PKPass extends Bundle {
 			const buffersEntries = Object.entries(buffers);
 
 			for (
-				let i = buffersEntries.length, buffer: [string, Buffer];
+				let i = buffersEntries.length, buffer: [string, Uint8Array];
 				(buffer = buffersEntries[--i]);
 
 			) {
@@ -409,7 +347,7 @@ export default class PKPass extends Bundle {
 	 * @param buffer
 	 */
 
-	public addBuffer(pathName: string, buffer: Buffer): void {
+	public addBuffer(pathName: string, buffer: Uint8Array): void {
 		if (!buffer?.length) {
 			return;
 		}
@@ -444,7 +382,7 @@ export default class PKPass extends Bundle {
 			 * It will be reconciliated in export phase.
 			 */
 
-			return super.addBuffer(pathName, Buffer.alloc(0));
+			return super.addBuffer(pathName, new Uint8Array());
 		}
 
 		if (RegExps.PERSONALIZATION.JSON.test(pathName)) {
@@ -471,8 +409,6 @@ export default class PKPass extends Bundle {
 		 * @example de.lproj\\icon.png => de.lproj/icon.png
 		 */
 
-		const normalizedPathName = pathName.replace(path.sep, "/");
-
 		/**
 		 * If a new pass.strings file is added, we want to
 		 * prevent it from being merged and, instead, save
@@ -481,7 +417,7 @@ export default class PKPass extends Bundle {
 
 		let match: RegExpMatchArray | null;
 
-		if ((match = normalizedPathName.match(RegExps.PASS_STRINGS))) {
+		if ((match = pathName.match(RegExps.PASS_STRINGS))) {
 			const [, lang] = match;
 
 			const parsedTranslations = Strings.parse(buffer).translations;
@@ -495,7 +431,7 @@ export default class PKPass extends Bundle {
 			return;
 		}
 
-		return super.addBuffer(normalizedPathName, buffer);
+		return super.addBuffer(pathName, buffer);
 	}
 
 	/**
@@ -564,7 +500,7 @@ export default class PKPass extends Bundle {
 	 * added to the bundle
 	 */
 
-	private [createManifestSymbol](): Buffer {
+	private [createManifestSymbol](): Uint8Array {
 		const manifest = Object.entries(this[filesSymbol]).reduce<{
 			[key: string]: string;
 		}>(
@@ -575,7 +511,7 @@ export default class PKPass extends Bundle {
 			{},
 		);
 
-		return Buffer.from(JSON.stringify(manifest));
+		return new TextEncoder().encode(JSON.stringify(manifest));
 	}
 
 	/**
@@ -592,7 +528,7 @@ export default class PKPass extends Bundle {
 
 		const fileNames = Object.keys(this[filesSymbol]);
 
-		const passJson = Buffer.from(JSON.stringify(this[propsSymbol]));
+		const passJson = new TextEncoder().encode(JSON.stringify(this[propsSymbol]));
 		super.addBuffer("pass.json", passJson);
 
 		if (!fileNames.some((fileName) => RegExps.PASS_ICON.test(fileName))) {
@@ -662,6 +598,11 @@ export default class PKPass extends Bundle {
 		const manifestBuffer = this[createManifestSymbol]();
 		super.addBuffer("manifest.json", manifestBuffer);
 
+    console.log({
+      manifestBuffer,
+      certificates: this[certificatesSymbol],
+    })
+
 		const signatureBuffer = Signature.create(
 			manifestBuffer,
 			this[certificatesSymbol],
@@ -681,28 +622,12 @@ export default class PKPass extends Bundle {
 	 * @returns
 	 */
 
-	public getAsBuffer(): Buffer {
+	public getAsBuffer(): Uint8Array {
 		if (!this.isFrozen) {
 			this[closePassSymbol]();
 		}
 
 		return super.getAsBuffer();
-	}
-
-	/**
-	 * Exports the pass as a zip stream. When this method
-	 * is invoked, the bundle will get frozen and, thus,
-	 * no files will be allowed to be added any further.
-	 *
-	 * @returns
-	 */
-
-	public getAsStream(): Stream {
-		if (!this.isFrozen) {
-			this[closePassSymbol]();
-		}
-
-		return super.getAsStream();
 	}
 
 	/**
@@ -719,7 +644,7 @@ export default class PKPass extends Bundle {
 	 * 		and Buffers as content.
 	 */
 
-	public getAsRaw(): { [filePath: string]: Buffer } {
+	public getAsRaw(): { [filePath: string]: Uint8Array } {
 		if (!this.isFrozen) {
 			this[closePassSymbol]();
 		}
@@ -1006,13 +931,14 @@ export default class PKPass extends Bundle {
 }
 
 function validateJSONBuffer(
-	buffer: Buffer,
+	buffer: Uint8Array,
 	schema: Parameters<typeof Schemas.validate>[0],
 ): Schemas.PassProps {
 	let contentAsJSON: Schemas.PassProps;
 
 	try {
-		contentAsJSON = JSON.parse(buffer.toString("utf8"));
+    const content = new TextDecoder().decode(buffer);
+		contentAsJSON = JSON.parse(content);
 	} catch (err) {
 		throw new TypeError(Messages.JSON.INVALID);
 	}
