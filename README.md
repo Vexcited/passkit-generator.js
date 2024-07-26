@@ -2,7 +2,7 @@
 
 Simple JS/TS interface to generate customized [Apple Wallet Passes](https://developer.apple.com/wallet/) for iOS and WatchOS.
 
-This is a rewrite of <https://github.com/alexandercerutti/passkit-generator> without Node.js' `Buffer`. Every `Buffer` is replaced with `Uint8Array`. `fs` and `stream` are removed so you can only get as raw and get as buffer. That means you have to provide buffers manually, see the following example that was run in a web browser :
+This is a rewrite of [`passkit-generator` by Alexander Cerutti](https://github.com/alexandercerutti/passkit-generator) without Node.js' `Buffer`. Every `Buffer` is replaced with `Uint8Array`. `fs` and `stream` are removed so you can only get as raw and get as buffer. That means you have to provide buffers manually, see the following example that was run in a web browser :
 
 ```typescript
 import { PKPass } from "passkit-generator.js";
@@ -54,6 +54,6 @@ pnpm add passkit-generator.js
 
 ## API
 
-Since this is a rewrite or [`passkit-generator`](https://github.com/alexandercerutti/passkit-generator), the documentation is literally the same as the original repository : <https://github.com/alexandercerutti/passkit-generator/wiki>.
+Since this is a rewrite, the documentation is literally the [same as the original repository](https://github.com/alexandercerutti/passkit-generator/wiki).
 
 Just note that `.getAsStream()` is removed.
