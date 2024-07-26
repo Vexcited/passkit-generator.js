@@ -1,12 +1,2 @@
-.DS_Store
 node_modules
-passModels/
-certificates/
-*.code-workspace
-.vscode/*
-!.vscode/settings.json
-*.js
-lib/
-examples/build
-spec/**/*.js
-spec/**/*.js.map
+dist
